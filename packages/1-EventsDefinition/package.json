@@ -1,0 +1,16 @@
+{
+  "name": "1-EventsDefinition",
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "devDependencies": {},
+  "scripts": {
+    "build": "tsc index.ts --outDir dist",
+    "test": "jest"
+  },
+  "jest": {
+    "testMatch": ["**/*.ts"],
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    }
+  }
+}
