@@ -56,22 +56,7 @@ class PricedProductItem {
   }
 }
 
-class ImmutablePricedProductItem {
-  constructor(
-    public readonly productId: string,
-    public readonly unitPrice: number,
-    public readonly quantity: number,
-  ) {
-  }
-
-  get totalPrice() {
-    return this.unitPrice * this.quantity;
-  }
-}
-
 // ENTITY
-
-// regular one
 class ShoppingCart {
   constructor(
     public readonly id: string,
@@ -80,18 +65,6 @@ class ShoppingCart {
     public readonly productItems: PricedProductItem[],
     public readonly confirmedAt: Date,
     public readonly canceledAt: Date,
-  ) {
-  }
-}
-
-class ImmutableShoppingCart {
-  constructor(
-    public id: string,
-    public clientId: string,
-    public status: ShoppingCartStatus,
-    public productItems: PricedProductItem[],
-    public confirmedAt: Date,
-    public canceledAt: Date,
   ) {
   }
 }

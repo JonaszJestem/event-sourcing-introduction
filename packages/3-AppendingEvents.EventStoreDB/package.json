@@ -1,0 +1,21 @@
+{
+  "name": "3-AppendingEvents.EventStoreDB",
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "devDependencies": {},
+  "scripts": {
+    "build": "tsc index.ts --outDir dist",
+    "test": "jest"
+  },
+  "jest": {
+    "testMatch": [
+      "**/*.ts"
+    ],
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    }
+  },
+  "dependencies": {
+    "@eventstore/db-client": "^5.0.0"
+  }
+}

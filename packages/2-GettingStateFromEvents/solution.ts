@@ -1,5 +1,4 @@
 import { randomUUID } from 'crypto';
-import { groupBy } from 'lodash';
 
 // EVENTS
 class ShoppingCartOpened {
@@ -56,24 +55,11 @@ class PricedProductItem {
   }
 }
 
-class ImmutablePricedProductItem {
-  constructor(
-    public readonly productId: string,
-    public readonly unitPrice: number,
-    public readonly quantity: number
-  ) {
-  }
-
-  get totalPrice() {
-    return this.unitPrice * this.quantity;
-  }
-}
-
 // ENTITY
 
 // regular one
 class ShoppingCart {
-  constructor(
+  private constructor(
     public id?: string,
     public clientId?: string,
     public status?: ShoppingCartStatus,
@@ -82,17 +68,73 @@ class ShoppingCart {
     public canceledAt?: Date
   ) {
   }
-}
 
-class ImmutableShoppingCart {
-  constructor(
-    public readonly id: string,
-    public readonly clientId: string,
-    public readonly status: ShoppingCartStatus,
-    public readonly productItems: PricedProductItem[],
-    public readonly confirmedAt: Date,
-    public readonly canceledAt: Date
-  ) {
+  addProduct(event: ProductItemAddedToShoppingCart) {
+    const indexOfProductInCart = this.productItems?.findIndex(
+      (product) => product.productId === event.productItem.productId
+    );
+
+    if (indexOfProductInCart !== undefined && indexOfProductInCart !== -1) {
+      this.productItems?.splice(
+        indexOfProductInCart,
+        1,
+        new PricedProductItem(
+          event.productItem.productId,
+          event.productItem.quantity +
+          this.productItems[indexOfProductInCart].quantity,
+          event.productItem.unitPrice,
+        )
+      );
+    } else {
+      this.productItems?.push(
+        new PricedProductItem(
+          event.productItem.productId,
+          event.productItem.quantity,
+          event.productItem.unitPrice,
+        )
+      );
+    }
+  }
+
+  removeProduct(event: ProductItemRemovedFromShoppingCart) {
+    const indexOfProductInCart = this.productItems?.findIndex(
+      (product) => product.productId === event.productItem.productId
+    );
+
+    if (indexOfProductInCart !== undefined && indexOfProductInCart !== -1) {
+      this.productItems?.splice(
+        indexOfProductInCart,
+        1,
+        new PricedProductItem(
+          event.productItem.productId,
+          this.productItems[indexOfProductInCart].quantity -
+          event.productItem.quantity,
+          event.productItem.unitPrice,
+        )
+      );
+      this.productItems = this.productItems?.filter(
+        (p) => p.quantity > 0
+      );
+    }
+  }
+
+  confirm(event: ShoppingCartConfirmed) {
+    this.status = ShoppingCartStatus.Confirmed;
+    this.confirmedAt = event.confirmedAt;
+  }
+
+  cancel(event: ShoppingCartCanceled) {
+    this.status = ShoppingCartStatus.Canceled;
+    this.canceledAt = event.canceledAt;
+  }
+
+  static openWith(event: ShoppingCartOpened) {
+    return new ShoppingCart(
+      event.shoppingCartId,
+      event.clientId,
+      ShoppingCartStatus.Pending,
+      []
+    );
   }
 }
 
@@ -104,71 +146,23 @@ enum ShoppingCartStatus {
 
 describe('GettingStateFromEventsTests', () => {
   const getShoppingCart = (events: any[]): ShoppingCart => {
-    let shoppingCart = new ShoppingCart();
+    let shoppingCart: ShoppingCart;
 
     events.forEach((event) => {
       if (event instanceof ShoppingCartOpened) {
-        shoppingCart = new ShoppingCart(
-          event.shoppingCartId,
-          event.clientId,
-          ShoppingCartStatus.Pending,
-          []
-        );
+        shoppingCart = ShoppingCart.openWith(event)
       } else if (event instanceof ProductItemAddedToShoppingCart) {
-        const indexOfProductInCart = shoppingCart.productItems?.findIndex(
-          (product) => product.productId === event.productItem.productId
-        );
-
-        if (indexOfProductInCart !== undefined && indexOfProductInCart !== -1) {
-          shoppingCart.productItems?.splice(
-            indexOfProductInCart,
-            1,
-            new PricedProductItem(
-              event.productItem.productId,
-              event.productItem.quantity +
-              shoppingCart.productItems[indexOfProductInCart].quantity,
-              event.productItem.unitPrice,
-            )
-          );
-        } else {
-          shoppingCart.productItems?.push(
-            new PricedProductItem(
-              event.productItem.productId,
-              event.productItem.quantity,
-              event.productItem.unitPrice,
-            )
-          );
-        }
+        shoppingCart.addProduct(event)
       } else if (event instanceof ProductItemRemovedFromShoppingCart) {
-        const indexOfProductInCart = shoppingCart.productItems?.findIndex(
-          (product) => product.productId === event.productItem.productId
-        );
-
-        if (indexOfProductInCart !== undefined && indexOfProductInCart !== -1) {
-          shoppingCart.productItems?.splice(
-            indexOfProductInCart,
-            1,
-            new PricedProductItem(
-              event.productItem.productId,
-              shoppingCart.productItems[indexOfProductInCart].quantity -
-              event.productItem.quantity,
-              event.productItem.unitPrice,
-            )
-          );
-          shoppingCart.productItems = shoppingCart.productItems?.filter(
-            (p) => p.quantity > 0
-          );
-        }
+        shoppingCart.removeProduct(event)
       } else if (event instanceof ShoppingCartConfirmed) {
-        shoppingCart.status = ShoppingCartStatus.Confirmed;
-        shoppingCart.confirmedAt = event.confirmedAt;
+        shoppingCart.confirm(event)
       } else if (event instanceof ShoppingCartCanceled) {
-        shoppingCart.status = ShoppingCartStatus.Canceled;
-        shoppingCart.canceledAt = event.canceledAt;
+        shoppingCart.cancel(event)
       }
     });
 
-    return shoppingCart;
+    return shoppingCart!;
   };
 
   it('it should get state for sequence of events', function () {
